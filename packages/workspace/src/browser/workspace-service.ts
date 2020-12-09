@@ -27,6 +27,7 @@ import { ILogger, Disposable, DisposableCollection, Emitter, Event, MaybePromise
 import { WorkspacePreferences } from './workspace-preferences';
 import * as jsoncparser from 'jsonc-parser';
 import * as Ajv from 'ajv';
+import * as moment from 'moment';
 import { FrontendApplicationConfigProvider } from '@theia/core/lib/browser/frontend-application-config-provider';
 import { FileStat, BaseStat } from '@theia/filesystem/lib/common/files';
 import { FileService } from '@theia/filesystem/lib/browser/file-service';
@@ -380,17 +381,26 @@ export class WorkspaceService implements FrontendApplicationContribution {
     }
 
     async spliceRoots(start: number, deleteCount?: number, ...rootsToAdd: URI[]): Promise<URI[]> {
+        const DATE_TIME_FORMAT = 'YYYY-MM-DD HH:mm:ss.SSS';
+        const _now: moment.Moment = moment(new Date(), DATE_TIME_FORMAT);
+        console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!! spliceRoots ', _now);
         if (!this._workspace) {
+            console.error('!!! spliceRoots !!! RETURN ');
             throw new Error('There is not active workspace');
         }
         const dedup = new Set<string>();
+        console.error('!!! spliceRoots !!! dedup ', dedup);
         const roots = this._roots.map(root => (dedup.add(root.resource.toString()), root.resource.toString()));
+        console.error('!!! spliceRoots !!! roots ', roots);
         const toAdd: string[] = [];
         for (const root of rootsToAdd) {
             const uri = root.toString();
             if (!dedup.has(uri)) {
+                console.error('!!! spliceRoots !!! toAdd ', uri);
                 dedup.add(uri);
                 toAdd.push(uri);
+            } else {
+                console.error('!!! spliceRoots !!! NOT toAdd ', uri);
             }
         }
         const toRemove = roots.splice(start, deleteCount || 0, ...toAdd);
@@ -398,12 +408,18 @@ export class WorkspaceService implements FrontendApplicationContribution {
             return [];
         }
         if (this._workspace.isDirectory) {
+            console.error('!!! spliceRoots !!! this._workspace.isDirectory ');
             const untitledWorkspace = await this.getUntitledWorkspace();
             await this.save(untitledWorkspace);
+        } else {
+            console.error('!!! spliceRoots !!! NOT this._workspace.isDirectory ');
         }
         const currentData = await this.getWorkspaceDataFromFile();
         const newData = WorkspaceData.buildWorkspaceData(roots, currentData && currentData.settings);
+        console.error('!!! spliceRoots !!! before write to file ', newData);
         await this.writeWorkspaceFile(this._workspace, newData);
+        const newData2 = WorkspaceData.buildWorkspaceData(roots, currentData && currentData.settings);
+        console.error('!!! spliceRoots !!! after write to file ', newData2);
         return toRemove.map(root => new URI(root));
     }
 
